@@ -4,7 +4,7 @@ import FooterMenu from './components/FooterMenu';
 import CashCalculator from './components/CashCalculator';
 import AgeCalculator from './components/AgeCalculator';
 import IslamicFeatures from './components/IslamicFeatures';
-import AlarmPage from './components/AlarmPage';
+import AmarHisab from './components/AmarHisab';
 import Settings from './components/Settings';
 import { AnimatePresence, motion } from 'framer-motion';
 
@@ -39,8 +39,8 @@ function App() {
         return <AgeCalculator language={language} />;
       case 'islamic':
         return <IslamicFeatures language={language} />;
-      case 'alarm':
-        return <AlarmPage />;
+      case 'amar_hisab':
+        return <AmarHisab />;
       case 'settings':
         return <Settings />; // Settings consumes context directly
       default:

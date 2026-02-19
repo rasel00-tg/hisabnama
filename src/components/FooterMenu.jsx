@@ -1,6 +1,6 @@
 import React, { useContext } from 'react';
 import { motion } from 'framer-motion';
-import { Banknote, Calculator, MoonStar, Settings, AlarmClock } from 'lucide-react';
+import { Banknote, Calculator, MoonStar, Settings, FileText } from 'lucide-react';
 import { AppContext } from '../App';
 
 const FooterMenu = ({ activeTab, setActiveTab }) => {
@@ -10,7 +10,7 @@ const FooterMenu = ({ activeTab, setActiveTab }) => {
         { id: 'cash', icon: Banknote },
         { id: 'age', icon: Calculator },
         { id: 'islamic', icon: MoonStar },
-        { id: 'alarm', icon: AlarmClock },
+        { id: 'amar_hisab', icon: FileText },
         { id: 'settings', icon: Settings },
     ];
 
