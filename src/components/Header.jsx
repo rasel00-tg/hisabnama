@@ -19,7 +19,7 @@ const Header = () => {
     });
 
     return (
-        <header className="glass sticky top-0 z-50 px-4 py-3 mb-4 rounded-b-2xl">
+        <header className="glass fixed top-0 left-0 w-full z-50 px-4 py-3 mb-4 rounded-b-2xl">
             <div className="flex justify-between items-center max-w-2xl mx-auto">
                 <div className="flex items-center space-x-2">
                     <img src="/amarlogo.png" alt="Logo" className="w-10 h-10 object-contain" />

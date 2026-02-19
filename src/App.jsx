@@ -50,12 +50,12 @@ function App() {
 
   return (
     <AppContext.Provider value={{ language, setLanguage, theme, setTheme }}>
-      <div className={`min-h-screen pb-24 relative overflow-hidden transition-colors duration-300 ${theme === 'dark' ? 'bg-gray-900 text-white' : 'bg-emerald-50 text-gray-900'}`}>
+      <div className={`min-h-screen pb-24 relative transition-colors duration-300 ${theme === 'dark' ? 'bg-gray-900 text-white' : 'bg-emerald-50 text-gray-900'}`}>
         <div className={`absolute inset-0 z-0 bg-gradient-to-b pointer-events-none transition-opacity duration-300 ${theme === 'dark' ? 'from-emerald-900/20 to-transparent' : 'from-emerald-100/50 to-transparent'}`} />
 
         <Header />
 
-        <main className="container mx-auto px-4 max-w-2xl z-10 relative">
+        <main className="container mx-auto px-4 max-w-2xl z-10 relative mt-24">
           <AnimatePresence mode="wait">
             <motion.div
               key={activeTab}
