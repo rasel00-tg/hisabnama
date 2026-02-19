@@ -1,8 +1,108 @@
 import React, { useState, useEffect } from 'react';
 import { getRamadanCountdown, getEidCountdown, toBengaliNumber } from '../utils/bengaliUtils';
 import { districts } from '../data/districts';
-import { MapPin, Clock, Lock, Unlock, Moon, Bell, BellOff } from 'lucide-react';
+import { MapPin, Clock, Lock, Unlock, Moon, Bell, BellOff, Sun } from 'lucide-react';
 import { Coordinates, CalculationMethod, PrayerTimes, Madhab } from 'adhan';
+
+const PrayerTimer = ({ prayerTimes, nextPrayerName, timeToNextPrayer, location }) => {
+    if (!prayerTimes) return null;
+
+    // Calculate Progress
+    const now = new Date();
+    let startTime, endTime;
+    let prevName = '', nextName = nextPrayerName;
+
+    const format = (d) => d.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true });
+
+    if (now < prayerTimes.fajr) {
+        startTime = new Date(prayerTimes.fajr); startTime.setDate(startTime.getDate() - 1);
+        endTime = prayerTimes.fajr;
+        prevName = 'Isha';
+    } else if (now < prayerTimes.dhuhr) {
+        startTime = prayerTimes.fajr; endTime = prayerTimes.dhuhr;
+        prevName = 'Fajr';
+    } else if (now < prayerTimes.asr) {
+        startTime = prayerTimes.dhuhr; endTime = prayerTimes.asr;
+        prevName = 'Dhuhr';
+    } else if (now < prayerTimes.maghrib) {
+        startTime = prayerTimes.asr; endTime = prayerTimes.maghrib;
+        prevName = 'Asr';
+    } else if (now < prayerTimes.isha) {
+        startTime = prayerTimes.maghrib; endTime = prayerTimes.isha;
+        prevName = 'Maghrib';
+    } else {
+        startTime = prayerTimes.isha;
+        const tomorrowFajr = new Date(prayerTimes.fajr); tomorrowFajr.setDate(tomorrowFajr.getDate() + 1);
+        endTime = tomorrowFajr;
+        prevName = 'Isha';
+    }
+
+    const totalDuration = endTime - startTime;
+    const elapsed = now - startTime;
+    const progress = Math.min(100, Math.max(0, (elapsed / totalDuration) * 100));
+
+    // Semi-circle math (Radius 80)
+    const radius = 80;
+    const strokeLength = Math.PI * radius;
+    const strokeOffset = strokeLength * (1 - progress / 100);
+
+    return (
+        <div className="bg-[#0f392b] text-white rounded-3xl p-6 relative overflow-hidden shadow-2xl mx-1 my-6 mb-8 transform hover:scale-[1.01] transition-transform duration-300">
+            {/* Background Pattern */}
+            <div className="absolute inset-0 opacity-10 pointer-events-none">
+                <div className="absolute top-[-50px] left-[-50px] w-40 h-40 rounded-full border-[20px] border-emerald-500/20"></div>
+                <div className="absolute bottom-[-30px] right-[-30px] w-60 h-60 rounded-full border-[40px] border-emerald-500/10"></div>
+            </div>
+
+            <div className="relative z-10 flex flex-col items-center">
+                {/* Location */}
+                <div className="flex items-center text-emerald-200 mb-6 text-sm font-medium tracking-wide bg-white/10 px-3 py-1 rounded-full backdrop-blur-sm">
+                    <MapPin size={14} className="mr-1.5" />
+                    {location}
+                </div>
+
+                {/* Progress Bar Container */}
+                <div className="relative w-64 h-32 mb-2">
+                    <svg className="w-full h-full transform overflow-visible" viewBox="0 0 200 100">
+                        {/* Track */}
+                        <path d="M 20 100 A 80 80 0 0 1 180 100" fill="none" stroke="rgba(255,255,255,0.1)" strokeWidth="12" strokeLinecap="round" />
+                        {/* Progress */}
+                        <path d="M 20 100 A 80 80 0 0 1 180 100" fill="none" stroke="#34d399" strokeWidth="12" strokeLinecap="round" strokeDasharray={strokeLength} strokeDashoffset={strokeOffset} className="transition-all duration-1000 ease-out" />
+                    </svg>
+
+                    {/* Centered Time/Countdown */}
+                    <div className="absolute bottom-0 left-0 right-0 flex flex-col items-center justify-end pb-2">
+                        <span className="text-4xl font-bold tracking-tighter text-white drop-shadow-lg">
+                            {toBengaliNumber(timeToNextPrayer.split(':').slice(0, 2).join(':'))}
+                        </span>
+                        <span className="text-xs text-emerald-300 font-medium tracking-wider uppercase mt-1">
+                            -{nextPrayerName} বাকি
+                        </span>
+                    </div>
+                </div>
+
+                {/* Prayer Info Bottom */}
+                <div className="flex justify-between w-full mt-4 px-2">
+                    <div className="flex flex-col items-start group cursor-default">
+                        <div className="flex items-center text-emerald-300 text-xs font-bold uppercase mb-1 tracking-wider group-hover:text-emerald-200 transition-colors">
+                            <Sun size={12} className="mr-1.5" />
+                            {prevName}
+                        </div>
+                        <span className="text-lg font-bold text-white group-hover:scale-105 transition-transform">{format(startTime)}</span>
+                    </div>
+
+                    <div className="flex flex-col items-end group cursor-default">
+                        <div className="flex items-center text-emerald-300 text-xs font-bold uppercase mb-1 tracking-wider group-hover:text-emerald-200 transition-colors">
+                            {nextName}
+                            <Moon size={12} className="ml-1.5" />
+                        </div>
+                        <span className="text-lg font-bold text-white group-hover:scale-105 transition-transform">{format(endTime)}</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    );
+};
 
 const PrayerTimesCard = ({ prayerTimes, nextPrayer, timeToNextPrayer }) => {
     if (!prayerTimes) return null;
@@ -318,6 +418,14 @@ const IslamicFeatures = () => {
                     </select>
                 </div>
             </div>
+
+            {/* Premium Prayer Timer */}
+            <PrayerTimer
+                prayerTimes={prayerTimes}
+                nextPrayerName={nextPrayerName}
+                timeToNextPrayer={timeToNextPrayer}
+                location={selectedDistrict.name}
+            />
 
             {/* Prayer Times Card */}
             <PrayerTimesCard prayerTimes={prayerTimes} nextPrayer={nextPrayerName} timeToNextPrayer={timeToNextPrayer} />

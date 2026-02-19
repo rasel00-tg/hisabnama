@@ -7,7 +7,8 @@ import { AppContext } from '../App';
 const SmartCalculator = ({ onClose }) => {
     const [display, setDisplay] = useState('0');
     const [equation, setEquation] = useState('');
-    const { language, theme } = useContext(AppContext);
+    const { theme } = useContext(AppContext);
+    const language = 'en';
 
     const handleInput = (val) => {
         if (display === '0' && val !== '.') {
@@ -96,6 +97,44 @@ const SmartCalculator = ({ onClose }) => {
     );
 };
 
+const SimpleCalculator = () => {
+    const [display, setDisplay] = useState('0');
+    const [equation, setEquation] = useState('');
+    const { theme } = useContext(AppContext);
+
+    const handleInput = (val) => setDisplay(display === '0' && val !== '.' ? val : display + val);
+    const handleOperator = (op) => { setEquation(display + ' ' + op + ' '); setDisplay('0'); };
+    const handleClear = () => { setDisplay('0'); setEquation(''); };
+    const handleCalculate = () => { try { setDisplay(String(eval(equation + display))); setEquation(''); } catch { setDisplay('Error'); } };
+
+    return (
+        <div className={`p-6 rounded-2xl shadow-sm border mt-6 ${theme === 'dark' ? 'bg-gray-800 border-gray-700' : 'bg-white border-emerald-50'}`}>
+            <h3 className={`text-lg font-bold mb-4 ${theme === 'dark' ? 'text-white' : 'text-gray-800'}`}>Simple Calculator</h3>
+            <div className="text-right mb-4">
+                <p className={`text-sm h-6 ${theme === 'dark' ? 'text-gray-400' : 'text-gray-400'}`}>{equation}</p>
+                <h1 className={`text-4xl font-bold break-words ${theme === 'dark' ? 'text-white' : 'text-gray-800'}`}>{display}</h1>
+            </div>
+            <div className="grid grid-cols-4 gap-3">
+                {['C', '(', ')', '/'].map(btn => (
+                    <button key={btn} onClick={() => btn === 'C' ? handleClear() : btn === '/' ? handleOperator('/') : handleInput(btn)} className={`font-bold p-3 rounded-lg shadow-sm text-lg ${theme === 'dark' ? 'bg-emerald-900 text-emerald-400' : 'bg-emerald-100 text-emerald-700'}`}>{btn}</button>
+                ))}
+                {['7', '8', '9', '*'].map(btn => (
+                    <button key={btn} onClick={() => btn === '*' ? handleOperator('*') : handleInput(btn)} className={`font-bold p-3 rounded-lg shadow-sm text-lg ${btn === '*' ? (theme === 'dark' ? 'bg-emerald-900 text-emerald-400' : 'bg-emerald-100 text-emerald-700') : (theme === 'dark' ? 'bg-gray-700 text-white' : 'bg-white text-gray-700')}`}>{btn === '*' ? '×' : btn}</button>
+                ))}
+                {['4', '5', '6', '-'].map(btn => (
+                    <button key={btn} onClick={() => btn === '-' ? handleOperator('-') : handleInput(btn)} className={`font-bold p-3 rounded-lg shadow-sm text-lg ${btn === '-' ? (theme === 'dark' ? 'bg-emerald-900 text-emerald-400' : 'bg-emerald-100 text-emerald-700') : (theme === 'dark' ? 'bg-gray-700 text-white' : 'bg-white text-gray-700')}`}>{btn === '-' ? '-' : btn}</button>
+                ))}
+                {['1', '2', '3', '+'].map(btn => (
+                    <button key={btn} onClick={() => btn === '+' ? handleOperator('+') : handleInput(btn)} className={`font-bold p-3 rounded-lg shadow-sm text-lg ${btn === '+' ? (theme === 'dark' ? 'bg-emerald-900 text-emerald-400' : 'bg-emerald-100 text-emerald-700') : (theme === 'dark' ? 'bg-gray-700 text-white' : 'bg-white text-gray-700')}`}>{btn === '+' ? '+' : btn}</button>
+                ))}
+                {['0', '.', '=', '%'].map(btn => (
+                    <button key={btn} onClick={() => btn === '=' ? handleCalculate() : handleInput(btn)} className={`font-bold p-3 rounded-lg shadow-sm text-lg ${btn === '=' ? 'bg-emerald-600 text-white col-span-2' : (theme === 'dark' ? 'bg-gray-700 text-white' : 'bg-white text-gray-700')}`} style={btn === '=' ? { gridColumn: 'span 2' } : {}}>{btn === '=' ? '=' : btn === '%' ? '%' : btn}</button>
+                ))}
+            </div>
+        </div>
+    );
+};
+
 const AgeCalculator = () => {
     const [dob, setDob] = useState('');
     const [targetDate, setTargetDate] = useState(new Date().toISOString().split('T')[0]);
@@ -104,8 +143,9 @@ const AgeCalculator = () => {
     const [error, setError] = useState('');
     const [showCalculator, setShowCalculator] = useState(false);
 
-    // Consume Context
-    const { language, theme } = useContext(AppContext);
+    // Consume Context - forcing English for this component
+    const { theme } = useContext(AppContext);
+    const language = 'en';
 
     const calculateNextBirthday = (birthDate, today) => {
         let nextBday = new Date(today.getFullYear(), birthDate.getMonth(), birthDate.getDate());
@@ -226,45 +266,60 @@ const AgeCalculator = () => {
                 </div>
             </div>
 
-            {age && (
-                <div className="space-y-6 fade-in">
-                    <div className="grid grid-cols-3 gap-2 text-center">
-                        <div className={`p-4 rounded-xl shadow-sm border flex flex-col items-center ${theme === 'dark' ? 'bg-gray-800 border-gray-700' : 'bg-white border-emerald-100'}`}>
-                            <span className={`text-3xl font-bold ${theme === 'dark' ? 'text-emerald-400' : 'text-emerald-600'}`}>{language === 'bn' ? toBengaliNumber(age.years) : age.years}</span>
-                            <span className="text-xs text-gray-500 uppercase mt-1">{t.year}</span>
-                        </div>
-                        <div className={`p-4 rounded-xl shadow-sm border flex flex-col items-center ${theme === 'dark' ? 'bg-gray-800 border-gray-700' : 'bg-white border-emerald-100'}`}>
-                            <span className={`text-3xl font-bold ${theme === 'dark' ? 'text-emerald-400' : 'text-emerald-600'}`}>{language === 'bn' ? toBengaliNumber(age.months) : age.months}</span>
-                            <span className="text-xs text-gray-500 uppercase mt-1">{t.month}</span>
-                        </div>
-                        <div className={`p-4 rounded-xl shadow-sm border flex flex-col items-center ${theme === 'dark' ? 'bg-gray-800 border-gray-700' : 'bg-white border-emerald-100'}`}>
-                            <span className={`text-3xl font-bold ${theme === 'dark' ? 'text-emerald-400' : 'text-emerald-600'}`}>{language === 'bn' ? toBengaliNumber(age.days) : age.days}</span>
-                            <span className="text-xs text-gray-500 uppercase mt-1">{t.day}</span>
+
+
+            {
+                !age && (
+                    <div className="space-y-6 fade-in">
+                        <SimpleCalculator />
+                        <div className={`w-full h-32 border border-dashed rounded-xl flex items-center justify-center ${theme === 'dark' ? 'bg-gray-700 border-gray-600 text-gray-400' : 'bg-gray-100 border-gray-200 text-gray-400'}`}>
+                            <span className="text-sm font-medium">// AdMob Ad will run here</span>
                         </div>
                     </div>
+                )
+            }
 
-                    {/* Next Birthday Info */}
-                    {nextBirthday && (
-                        <div className={`p-5 rounded-xl shadow-sm border-l-4 ${theme === 'dark' ? 'bg-gray-800 border-emerald-600' : 'bg-white border-emerald-500'}`}>
-                            <h3 className={`text-lg font-bold mb-2 ${theme === 'dark' ? 'text-emerald-400' : 'text-emerald-800'}`}>{t.nextBdayTitle}</h3>
-                            <div className="space-y-1">
-                                <p className={`font-medium ${theme === 'dark' ? 'text-emerald-300' : 'text-emerald-700'}`}>
-                                    {t.remaining} <span className="font-bold">{language === 'bn' ? toBengaliNumber(nextBirthday.months) : nextBirthday.months} {t.month} {language === 'bn' ? toBengaliNumber(nextBirthday.days) : nextBirthday.days} {t.day}</span>
-                                </p>
-                                <p className={`text-sm ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>
-                                    {t.dateLabel} {nextBirthday.formattedDate}, {nextBirthday.dayName}
-                                </p>
+            {
+                age && (
+                    <div className="space-y-6 fade-in">
+                        <div className="grid grid-cols-3 gap-2 text-center">
+                            <div className={`p-4 rounded-xl shadow-sm border flex flex-col items-center ${theme === 'dark' ? 'bg-gray-800 border-gray-700' : 'bg-white border-emerald-100'}`}>
+                                <span className={`text-3xl font-bold ${theme === 'dark' ? 'text-emerald-400' : 'text-emerald-600'}`}>{language === 'bn' ? toBengaliNumber(age.years) : age.years}</span>
+                                <span className="text-xs text-gray-500 uppercase mt-1">{t.year}</span>
+                            </div>
+                            <div className={`p-4 rounded-xl shadow-sm border flex flex-col items-center ${theme === 'dark' ? 'bg-gray-800 border-gray-700' : 'bg-white border-emerald-100'}`}>
+                                <span className={`text-3xl font-bold ${theme === 'dark' ? 'text-emerald-400' : 'text-emerald-600'}`}>{language === 'bn' ? toBengaliNumber(age.months) : age.months}</span>
+                                <span className="text-xs text-gray-500 uppercase mt-1">{t.month}</span>
+                            </div>
+                            <div className={`p-4 rounded-xl shadow-sm border flex flex-col items-center ${theme === 'dark' ? 'bg-gray-800 border-gray-700' : 'bg-white border-emerald-100'}`}>
+                                <span className={`text-3xl font-bold ${theme === 'dark' ? 'text-emerald-400' : 'text-emerald-600'}`}>{language === 'bn' ? toBengaliNumber(age.days) : age.days}</span>
+                                <span className="text-xs text-gray-500 uppercase mt-1">{t.day}</span>
                             </div>
                         </div>
-                    )}
 
-                    {/* AdMob Ad Space - Bottom of Result */}
-                    <div className={`w-full h-32 border border-dashed rounded-xl flex items-center justify-center ${theme === 'dark' ? 'bg-gray-700 border-gray-600 text-gray-400' : 'bg-gray-100 border-gray-200 text-gray-400'}`}>
-                        <span className="text-sm font-medium">// AdMob Ad will run here</span>
+                        {/* Next Birthday Info */}
+                        {nextBirthday && (
+                            <div className={`p-5 rounded-xl shadow-sm border-l-4 ${theme === 'dark' ? 'bg-gray-800 border-emerald-600' : 'bg-white border-emerald-500'}`}>
+                                <h3 className={`text-lg font-bold mb-2 ${theme === 'dark' ? 'text-emerald-400' : 'text-emerald-800'}`}>{t.nextBdayTitle}</h3>
+                                <div className="space-y-1">
+                                    <p className={`font-medium ${theme === 'dark' ? 'text-emerald-300' : 'text-emerald-700'}`}>
+                                        {t.remaining} <span className="font-bold">{language === 'bn' ? toBengaliNumber(nextBirthday.months) : nextBirthday.months} {t.month} {language === 'bn' ? toBengaliNumber(nextBirthday.days) : nextBirthday.days} {t.day}</span>
+                                    </p>
+                                    <p className={`text-sm ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>
+                                        {t.dateLabel} {nextBirthday.formattedDate}, {nextBirthday.dayName}
+                                    </p>
+                                </div>
+                            </div>
+                        )}
+
+                        {/* AdMob Ad Space - Bottom of Result */}
+                        <div className={`w-full h-32 border border-dashed rounded-xl flex items-center justify-center ${theme === 'dark' ? 'bg-gray-700 border-gray-600 text-gray-400' : 'bg-gray-100 border-gray-200 text-gray-400'}`}>
+                            <span className="text-sm font-medium">// AdMob Ad will run here</span>
+                        </div>
                     </div>
-                </div>
-            )}
-        </div>
+                )
+            }
+        </div >
     );
 };
 
