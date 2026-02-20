@@ -161,174 +161,219 @@ const SimpleCalculator = () => {
 };
 
 const WeatherModule = () => {
-    const [loading, setLoading] = useState(false);
+    const { language, theme } = useContext(AppContext);
+    const [loading, setLoading] = useState(true);
+    const [useDefault, setUseDefault] = useState(false);
     const [weather, setWeather] = useState({
-        temp: 28,
-        condition: 'Partly Cloudy',
-        wind: 15,
-        humidity: 62,
-        rain: 10,
-        city: 'Banani',
-        district: 'Dhaka',
+        temp: '--',
+        condition: language === 'bn' ? 'লোড হচ্ছে...' : 'Loading...',
+        wind: '--',
+        humidity: '--',
+        rain: '--',
+        district: language === 'bn' ? 'লোকেশন' : 'Location',
+        code: 0
     });
 
-    const hourlyForecast = [
-        { time: 'Now', icon: Sun, temp: 28 },
-        { time: '14:00', icon: Cloud, temp: 29 },
-        { time: '15:00', icon: CloudLightning, temp: 27 },
-        { time: '16:00', icon: CloudRain, temp: 26 },
-        { time: '17:00', icon: CloudRain, temp: 25 },
-        { time: '18:00', icon: Cloud, temp: 24 },
-    ];
+    const [forecast, setForecast] = useState([]);
 
-    const weeklyForecast = [
-        { day: 'Today', icon: Cloud, min: 24, max: 29, type: 'Cloudy' },
-        { day: 'Tomorrow', icon: CloudRain, min: 23, max: 28, type: 'Rainy' },
-        { day: 'Wed', icon: CloudLightning, min: 22, max: 27, type: 'Stormy' },
-        { day: 'Thu', icon: Sun, min: 24, max: 31, type: 'Sunny' },
-        { day: 'Fri', icon: Sun, min: 25, max: 32, type: 'Sunny' },
-        { day: 'Sat', icon: CloudRain, min: 23, max: 29, type: 'Rainy' },
-        { day: 'Sun', icon: Cloud, min: 24, max: 30, type: 'Cloudy' },
-    ];
+    const weatherConditionsBn = {
+        'Clear': 'পরিষ্কার আকাশ',
+        'Mainly Clear': 'অধিকাংশ পরিষ্কার',
+        'Partly Cloudy': 'আংশিক মেঘলা',
+        'Overcast': 'মেঘলা আকাশ',
+        'Fog': 'কুয়াশাচ্ছন্ন',
+        'Drizzle': 'ঝিরঝিরে বৃষ্টি',
+        'Rain': 'বৃষ্টি',
+        'Snow': 'তুষারপাত',
+        'Thunderstorm': 'বজ্রবৃষ্টি',
+    };
 
-    useEffect(() => {
-        const fetchWeatherData = async (lat, lon) => {
-            setLoading(true);
-            try {
-                // Example API call:
-                // const res = await fetch(`https://api.openweathermap.org/data/2.5/weather?lat=${lat}&lon=${lon}&units=metric&appid=YOUR_API_KEY`);
-                // const data = await res.json();
+    const fetchWeatherData = async (lat, lon, isFallback = false) => {
+        setLoading(true);
+        setUseDefault(isFallback);
+        try {
+            const weatherRes = await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current_weather=true&hourly=temperature_2m,relativehumidity_2m,precipitation_probability,weathercode&timezone=auto`);
+            const weatherData = await weatherRes.json();
 
-                // Simulate fetching data based on coords
-                setTimeout(() => {
-                    // console.log("Fetched weather for:", lat, lon);
-                    // setWeather({ ...parsedData });
-                    setLoading(false);
-                }, 1000);
-            } catch (error) {
-                console.error("Weather fetch failed", error);
-                setLoading(false);
-            }
-        };
+            // Fetch only district level Info in Bengali
+            const geoRes = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lon}&zoom=8&addressdetails=1&accept-language=bn`);
+            const geoData = await geoRes.json();
 
+            const address = geoData.address;
+            const district = address.state_district || address.city || address.county || (language === 'bn' ? 'ঢাকা' : 'Dhaka');
+
+            const interpretCode = (code) => {
+                if (code === 0) return 'Clear';
+                if (code <= 3) return 'Partly Cloudy';
+                if (code <= 48) return 'Fog';
+                if (code <= 55) return 'Drizzle';
+                if (code <= 65) return 'Rain';
+                if (code <= 77) return 'Snow';
+                if (code <= 82) return 'Rain';
+                return 'Thunderstorm';
+            };
+
+            const condition = interpretCode(weatherData.current_weather.weathercode);
+
+            setWeather({
+                temp: Math.round(weatherData.current_weather.temperature),
+                condition: language === 'bn' ? (weatherConditionsBn[condition] || condition) : condition,
+                wind: weatherData.current_weather.windspeed,
+                humidity: weatherData.hourly.relativehumidity_2m[0],
+                rain: weatherData.hourly.precipitation_probability[0],
+                district: district,
+                code: weatherData.current_weather.weathercode
+            });
+
+            const currentHour = new Date().getHours();
+            const hourly = weatherData.hourly.temperature_2m.slice(currentHour, currentHour + 6).map((t, i) => ({
+                time: i === 0 ? (language === 'bn' ? 'এখন' : 'Now') : `${(currentHour + i) % 24}:00`,
+                temp: Math.round(t),
+                code: weatherData.hourly.weathercode[currentHour + i]
+            }));
+            setForecast(hourly);
+            setLoading(false);
+        } catch (error) {
+            console.error("Weather fetch failed", error);
+            setLoading(false);
+        }
+    };
+
+    const detectLocation = () => {
+        setLoading(true);
         if (navigator.geolocation) {
             navigator.geolocation.getCurrentPosition(
                 (position) => {
-                    const { latitude, longitude } = position.coords;
-                    // Auto-detect logic would go here
-                    fetchWeatherData(latitude, longitude);
+                    fetchWeatherData(position.coords.latitude, position.coords.longitude);
                 },
                 (error) => {
-                    console.log("Location denied, using default.");
-                }
+                    fetchWeatherData(23.8103, 90.4125, true); // Fallback to Dhaka
+                },
+                { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
             );
+        } else {
+            fetchWeatherData(23.8103, 90.4125, true);
         }
+    };
+
+    useEffect(() => {
+        detectLocation();
     }, []);
 
+    const getWeatherIcon = (code, size = 60) => {
+        const getBaseIcon = () => {
+            if (code === 0) return <Sun size={size} className="text-yellow-400 drop-shadow-[0_0_15px_rgba(250,204,21,0.5)]" strokeWidth={1.5} />;
+            if (code <= 3) return <Cloud size={size} className="text-blue-300 drop-shadow-[0_0_10px_rgba(147,197,253,0.5)]" strokeWidth={1.5} />;
+            if (code <= 48) return <Cloud size={size} className="text-gray-400 drop-shadow-[0_0_10px_rgba(156,163,175,0.5)]" strokeWidth={1.5} />;
+            if (code <= 55) return <CloudRain size={size} className="text-blue-200 drop-shadow-[0_0_10px_rgba(191,219,254,0.5)]" strokeWidth={1.5} />;
+            if (code <= 65) return <CloudRain size={size} className="text-blue-400 drop-shadow-[0_0_10px_rgba(96,165,250,0.5)]" strokeWidth={1.5} />;
+            if (code <= 77) return <CloudSnow size={size} className="text-white drop-shadow-[0_0_10px_rgba(255,255,255,0.5)]" strokeWidth={1.5} />;
+            if (code <= 82) return <CloudRain size={size} className="text-blue-500 drop-shadow-[0_0_10px_rgba(59,130,246,0.5)]" strokeWidth={1.5} />;
+            return <CloudLightning size={size} className="text-yellow-300 drop-shadow-[0_0_15px_rgba(253,224,71,0.5)]" strokeWidth={1.5} />;
+        };
+
+        return (
+            <div className="relative group transition-transform duration-500 hover:scale-110">
+                <div className="absolute inset-0 blur-xl opacity-20 scale-150 animate-pulse bg-current rounded-full" />
+                {getBaseIcon()}
+            </div>
+        );
+    };
+
     return (
-        <div className="bg-slate-900/90 backdrop-blur-xl text-white rounded-3xl p-6 relative overflow-hidden shadow-2xl mt-6 font-sans border border-slate-700/50">
-            {/* Background Decoration */}
-            <div className="absolute top-[-50px] right-[-50px] w-48 h-48 bg-blue-500/20 rounded-full blur-[80px]" />
-            <div className="absolute bottom-[-20%] left-[-20%] w-64 h-64 bg-emerald-500/10 rounded-full blur-[80px]" />
+        <div className={`relative overflow-hidden rounded-[2.5rem] p-8 shadow-2xl transition-all duration-700 font-sans border border-white/10 ${theme === 'dark' ? 'bg-slate-900/80 text-white' : 'bg-slate-800/90 text-white'}`}>
+            <div className="absolute -top-24 -right-24 w-64 h-64 bg-blue-500/20 rounded-full blur-[100px]" />
+            <div className="absolute -bottom-24 -left-24 w-64 h-64 bg-emerald-500/10 rounded-full blur-[100px]" />
 
-            {/* Header: Location & Update */}
-            <div className="flex justify-between items-start mb-6 relative z-10">
-                <div className="flex flex-col">
-                    <div className="flex items-center space-x-2 text-slate-300">
-                        <MapPin size={16} className="text-blue-400" />
-                        <span className="text-sm uppercase tracking-wider font-semibold">{weather.district}</span>
+            <div className="relative z-10 flex flex-col space-y-3 mb-8">
+                <div className="flex justify-between items-center">
+                    <div className="flex items-center space-x-2.5 bg-white/5 px-4 py-1.5 rounded-full backdrop-blur-md border border-white/5">
+                        <MapPin size={16} className="text-blue-400 animate-bounce" />
+                        <span className="text-xs font-bold uppercase tracking-[0.2em] text-blue-200">
+                            {weather.district}
+                        </span>
                     </div>
-                    <span className="text-xs text-slate-500 font-medium ml-6">{weather.city}</span>
+                    <button onClick={detectLocation} className={`p-2.5 rounded-2xl bg-white/5 hover:bg-white/10 border border-white/5 transition-all active:scale-90 ${loading ? 'animate-spin' : ''}`}>
+                        <RefreshCw size={18} className="text-slate-300" />
+                    </button>
                 </div>
-                <button
-                    className={`p-2 rounded-full bg-white/5 hover:bg-white/10 transition-colors ${loading ? 'animate-spin' : ''}`}
-                    onClick={() => setLoading(true)} // Re-trigger fetch
-                >
-                    <RefreshCw size={14} className="text-slate-400" />
-                </button>
+
+                {useDefault && (
+                    <motion.div initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} className="flex items-center space-x-2 bg-amber-500/10 border border-amber-500/20 px-3 py-1.5 rounded-xl">
+                        <div className="w-1.5 h-1.5 rounded-full bg-amber-500 animate-ping" />
+                        <span className="text-[10px] font-medium text-amber-200">
+                            {language === 'bn' ? 'সঠিক আবহাওয়ার জন্য লোকেশন অন করুন' : 'Turn on location for accuracy'}
+                        </span>
+                    </motion.div>
+                )}
             </div>
 
-            {/* Main Weather Display */}
-            <div className="flex flex-col items-center mb-10 relative z-10">
-                {/* 3D-style Icon Container */}
-                <div className="relative mb-2 filter drop-shadow-[0_10px_20px_rgba(0,0,0,0.3)]">
-                    <CloudLightning size={100} className="text-blue-400 z-10 relative" strokeWidth={1.5} />
-                    <div className="absolute top-2 right-2 animate-pulse">
-                        <CloudLightning size={100} className="text-yellow-300 opacity-20 blur-md" />
+            <div className="relative z-10 flex flex-col items-center justify-center space-y-6 mb-12 py-4">
+                <div className="py-2 scale-125">
+                    {getWeatherIcon(weather.code, 120)}
+                </div>
+
+                <div className="text-center">
+                    <div className="flex flex-col items-center">
+                        <span className="text-8xl font-black bg-clip-text text-transparent bg-gradient-to-b from-white to-white/40 leading-none tracking-tighter drop-shadow-2xl">
+                            {language === 'bn' ? toBengaliNumber(weather.temp) : weather.temp}
+                            <span className="text-4xl align-top ml-1 text-blue-400">°</span>
+                        </span>
+                        <h2 className="text-3xl font-bold mt-4 text-blue-100 tracking-tight">
+                            {weather.district}
+                        </h2>
+                        <p className="text-sm font-bold uppercase tracking-[0.3em] text-white/40 mt-2 bg-white/5 px-6 py-1 rounded-full border border-white/5 backdrop-blur-sm">
+                            {weather.condition}
+                        </p>
                     </div>
                 </div>
-
-                <div className="flex flex-col items-center">
-                    <h1 className="text-7xl font-bold bg-clip-text text-transparent bg-gradient-to-b from-white to-slate-400 leading-none">
-                        {weather.temp}°
-                    </h1>
-                    <p className="text-blue-300 text-lg font-medium mt-2">{weather.condition}</p>
-                </div>
             </div>
 
-            {/* Detailed Metrics */}
-            <div className="grid grid-cols-3 gap-3 mb-8 bg-white/5 p-4 rounded-2xl border border-white/5 backdrop-blur-sm">
-                <div className="flex flex-col items-center justify-center border-r border-white/10">
-                    <Wind size={20} className="text-slate-300 mb-1" />
-                    <span className="text-sm font-bold">{weather.wind} km/h</span>
-                    <span className="text-[10px] text-slate-500 uppercase">Wind</span>
-                </div>
-                <div className="flex flex-col items-center justify-center border-r border-white/10">
-                    <Droplets size={20} className="text-blue-400 mb-1" />
-                    <span className="text-sm font-bold">{weather.humidity}%</span>
-                    <span className="text-[10px] text-slate-500 uppercase">Humidity</span>
-                </div>
-                <div className="flex flex-col items-center justify-center">
-                    <CloudRain size={20} className="text-slate-300 mb-1" />
-                    <span className="text-sm font-bold">{weather.rain}%</span>
-                    <span className="text-[10px] text-slate-500 uppercase">Chance</span>
-                </div>
+            <div className="relative z-10 grid grid-cols-3 gap-4 mb-8">
+                {[
+                    { icon: Wind, val: weather.wind, unit: 'km/h', label: language === 'bn' ? 'বাতাস' : 'Wind', color: 'text-slate-300' },
+                    { icon: Droplets, val: weather.humidity, unit: '%', label: language === 'bn' ? 'আর্দ্রতা' : 'Humidity', color: 'text-blue-400' },
+                    { icon: CloudRain, val: weather.rain, unit: '%', label: language === 'bn' ? 'বৃষ্টি' : 'RainChance', color: 'text-blue-300' }
+                ].map((item, idx) => (
+                    <div key={idx} className="flex flex-col items-center justify-center p-4 rounded-[2rem] bg-white/5 border border-white/5 backdrop-blur-md hover:bg-white/10 transition-colors group">
+                        <item.icon size={22} className={`${item.color} mb-2 group-hover:scale-110 transition-transform`} />
+                        <div className="flex flex-col items-center">
+                            <span className="text-sm font-black leading-tight">
+                                {language === 'bn' ? toBengaliNumber(item.val) : item.val}
+                                <span className="text-[10px] font-medium ml-0.5 opacity-60">{item.unit}</span>
+                            </span>
+                            <span className="text-[10px] font-bold uppercase tracking-wider text-white/30 mt-1">{item.label}</span>
+                        </div>
+                    </div>
+                ))}
             </div>
 
-            {/* Hourly Forecast */}
-            <div className="mb-6">
-                <h3 className="text-xs font-bold text-slate-400 mb-3 uppercase tracking-wider pl-1">Hourly Forecast</h3>
-                <div className="flex space-x-3 overflow-x-auto pb-2 scrollbar-hide">
-                    {hourlyForecast.map((hour, index) => {
-                        const Icon = hour.icon;
-                        const isNow = index === 0;
-                        return (
-                            <div key={index} className={`flex-shrink-0 flex flex-col items-center justify-center w-14 h-24 rounded-xl border transition-all ${isNow ? 'bg-blue-600/20 border-blue-500/50 shadow-lg shadow-blue-900/20' : 'bg-white/5 border-white/5'}`}>
-                                <span className={`text-[10px] mb-2 ${isNow ? 'text-blue-200' : 'text-slate-500'}`}>{hour.time}</span>
-                                <Icon size={20} className={`mb-2 ${isNow ? 'text-blue-400' : 'text-slate-400'}`} />
-                                <span className="text-sm font-bold">{hour.temp}°</span>
+            <div className="relative z-10">
+                <div className="flex items-center justify-between mb-4 px-2">
+                    <h3 className="text-[10px] font-black uppercase tracking-[0.2em] text-white/30">
+                        {language === 'bn' ? 'আগামী কয়েক ঘণ্টা' : 'Hourly Snapshot'}
+                    </h3>
+                    <div className="h-px flex-1 bg-gradient-to-r from-white/10 to-transparent ml-4" />
+                </div>
+                <div className="flex space-x-3 overflow-x-auto pb-4 scrollbar-hide">
+                    {forecast.map((hour, index) => (
+                        <div key={index} className={`flex-shrink-0 flex flex-col items-center justify-center w-16 h-32 rounded-3xl border transition-all duration-500 ${index === 0 ? 'bg-blue-500/20 border-blue-500/50 shadow-xl' : 'bg-white/5 border-white/5 hover:bg-white/10'}`}>
+                            <span className={`text-[10px] mb-4 font-black ${index === 0 ? 'text-blue-300' : 'text-white/40'}`}>
+                                {language === 'bn' ? toBengaliNumber(hour.time) : hour.time}
+                            </span>
+                            <div className="mb-4">
+                                {getWeatherIcon(hour.code, 22)}
                             </div>
-                        );
-                    })}
+                            <span className="text-sm font-black tracking-tighter">
+                                {language === 'bn' ? toBengaliNumber(hour.temp) : hour.temp}°
+                            </span>
+                        </div>
+                    ))}
                 </div>
             </div>
 
-            {/* 7-Day Forecast */}
-            <div>
-                <h3 className="text-xs font-bold text-slate-400 mb-3 uppercase tracking-wider pl-1">7-Day Forecast</h3>
-                <div className="space-y-2">
-                    {weeklyForecast.slice(0, 4).map((day, idx) => {
-                        const Icon = day.icon;
-                        return (
-                            <div key={idx} className="flex items-center justify-between p-3 bg-white/5 rounded-xl border border-white/5 hover:bg-white/10 transition-colors">
-                                <span className="text-sm font-medium w-20 text-slate-300">{day.day}</span>
-                                <div className="flex items-center space-x-2 flex-1 justify-center">
-                                    <Icon size={18} className="text-blue-400" />
-                                    <span className="text-xs text-slate-400 w-16 text-center">{day.type}</span>
-                                </div>
-                                <div className="flex space-x-2 w-16 justify-end text-sm">
-                                    <span className="font-bold text-white">{day.max}°</span>
-                                    <span className="text-slate-500">{day.min}°</span>
-                                </div>
-                            </div>
-                        );
-                    })}
-                </div>
-            </div>
-
-            {/* Ad Space for Weather */}
-            <div className="w-full h-16 mt-6 border border-dashed border-slate-700 rounded-xl flex items-center justify-center bg-black/20 relative z-10">
-                <span className="text-xs font-medium text-slate-500">// AdMob Ad will run here</span>
+            <div className="relative z-10 w-full h-16 mt-4 border border-dashed border-white/10 rounded-3xl flex items-center justify-center bg-black/20 overflow-hidden">
+                <span className="text-[10px] font-medium text-white/20 uppercase tracking-[0.4em] font-mono">Sponsored Slot</span>
             </div>
         </div>
     );

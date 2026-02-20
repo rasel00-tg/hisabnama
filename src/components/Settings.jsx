@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useContext } from 'react';
-import { Bell, BellOff, Globe, User, RefreshCw, ChevronRight, MessageCircle, Facebook, Moon, Sun } from 'lucide-react';
+import { Bell, BellOff, Globe, User, RefreshCw, ChevronRight, MessageCircle, Facebook, Moon, Sun, Star, X } from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
 import { toBengaliNumber } from '../utils/bengaliUtils';
 import { AppContext } from '../App';
 
@@ -8,6 +9,8 @@ const Settings = () => {
     const [notificationsEnabled, setNotificationsEnabled] = useState(false);
     const [checkingUpdate, setCheckingUpdate] = useState(false);
     const [appVersion, setAppVersion] = useState('1.0.0');
+    const [showUpdateModal, setShowUpdateModal] = useState(false);
+    const [rating, setRating] = useState(0);
 
     useEffect(() => {
         // Check notification permission status
@@ -44,11 +47,11 @@ const Settings = () => {
         setCheckingUpdate(true);
         setTimeout(() => {
             setCheckingUpdate(false);
-            const isUpdateAvailable = false;
+            const isUpdateAvailable = false; // This would typically come from an API
             if (isUpdateAvailable) {
                 window.open('https://play.google.com/store/apps/details?id=com.yourapp.id', '_blank');
             } else {
-                alert(language === 'bn' ? 'আপনি বর্তমান সর্বশেষ ভার্সনে আছেন' : 'You are on the latest version');
+                setShowUpdateModal(true);
             }
         }, 2000);
     };
@@ -230,6 +233,77 @@ const Settings = () => {
             <div className={`w-full h-16 mt-4 border border-dashed rounded-xl flex items-center justify-center ${theme === 'dark' ? 'bg-gray-800 border-gray-700 text-gray-500' : 'bg-gray-100 border-gray-200 text-gray-400'}`}>
                 <span className="text-xs font-medium">// AdMob Ad will run here</span>
             </div>
+
+            {/* Update Success Modal */}
+            <AnimatePresence>
+                {showUpdateModal && (
+                    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
+                        <motion.div
+                            initial={{ opacity: 0 }}
+                            animate={{ opacity: 1 }}
+                            exit={{ opacity: 0 }}
+                            onClick={() => setShowUpdateModal(false)}
+                            className="absolute inset-0 bg-black/60 backdrop-blur-sm"
+                        />
+                        <motion.div
+                            initial={{ scale: 0.9, opacity: 0, y: 20 }}
+                            animate={{ scale: 1, opacity: 1, y: 0 }}
+                            exit={{ scale: 0.9, opacity: 0, y: 20 }}
+                            className={`relative w-full max-w-sm rounded-3xl p-8 shadow-2xl border ${theme === 'dark' ? 'bg-gray-800 border-gray-700' : 'bg-white border-emerald-50'}`}
+                        >
+                            <button
+                                onClick={() => setShowUpdateModal(false)}
+                                className="absolute top-4 right-4 p-2 rounded-full hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+                            >
+                                <X size={20} className={theme === 'dark' ? 'text-gray-400' : 'text-gray-500'} />
+                            </button>
+
+                            <div className="flex flex-col items-center text-center">
+                                <div className="w-20 h-20 bg-emerald-100 dark:bg-emerald-900/30 rounded-full flex items-center justify-center mb-6">
+                                    <RefreshCw size={40} className="text-emerald-600 dark:text-emerald-400" />
+                                </div>
+                                <h3 className={`text-xl font-bold mb-2 ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
+                                    {language === 'bn' ? 'সবকিছু ঠিক আছে!' : 'Everything is up to date!'}
+                                </h3>
+                                <p className={`text-sm mb-8 ${theme === 'dark' ? 'text-gray-400' : 'text-gray-500'}`}>
+                                    {language === 'bn' ? 'আপনি ইতিমধ্যে সর্বশেষ ভার্সনে আছেন' : 'You are already using the latest version of the app.'}
+                                </p>
+
+                                <div className="w-full h-px bg-gray-100 dark:bg-gray-700 mb-8" />
+
+                                <p className={`text-xs font-bold uppercase tracking-widest mb-4 ${theme === 'dark' ? 'text-gray-500' : 'text-gray-400'}`}>
+                                    {language === 'bn' ? 'আমাদের অ্যাপটি রেটিং দিন' : 'Rate our app'}
+                                </p>
+
+                                <div className="flex space-x-2">
+                                    {[1, 2, 3, 4, 5].map((star) => (
+                                        <button
+                                            key={star}
+                                            onClick={() => setRating(star)}
+                                            className="transform active:scale-90 transition-transform"
+                                        >
+                                            <Star
+                                                size={32}
+                                                className={`${star <= rating ? 'fill-yellow-400 text-yellow-400' : 'text-gray-300 dark:text-gray-600'} transition-colors`}
+                                            />
+                                        </button>
+                                    ))}
+                                </div>
+
+                                {rating > 0 && (
+                                    <motion.p
+                                        initial={{ opacity: 0, y: 10 }}
+                                        animate={{ opacity: 1, y: 0 }}
+                                        className="text-emerald-500 font-bold mt-4 text-sm"
+                                    >
+                                        {language === 'bn' ? 'ধন্যবাদ আপনার মতামতের জন্য!' : 'Thank you for your rating!'}
+                                    </motion.p>
+                                )}
+                            </div>
+                        </motion.div>
+                    </div>
+                )}
+            </AnimatePresence>
         </div>
     );
 };
